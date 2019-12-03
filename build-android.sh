@@ -94,6 +94,12 @@ select_toolchain () {
     TOOLCHAIN=$1
 }
 
+BOOST_DIR="$PROGDIR/boost_${BOOST_VER1}_${BOOST_VER2}_${BOOST_VER3}"
+register_option "--boost_dir=<dir>" set_boostdir "Set root path of boost."
+set_boostdir () {
+    BOOST_DIR=$1
+}
+
 CLEAN=no
 register_option "--clean"    do_clean     "Delete all previously downloaded and built files, then exit."
 do_clean () {	CLEAN=yes; }
@@ -179,7 +185,6 @@ echo "Building boost version: $BOOST_VER1.$BOOST_VER2.$BOOST_VER3"
 
 BOOST_DOWNLOAD_LINK="http://downloads.sourceforge.net/project/boost/boost/$BOOST_VER1.$BOOST_VER2.$BOOST_VER3/boost_${BOOST_VER1}_${BOOST_VER2}_${BOOST_VER3}.tar.bz2?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fboost%2Ffiles%2Fboost%2F${BOOST_VER1}.${BOOST_VER2}.${BOOST_VER3}%2F&ts=1291326673&use_mirror=garr"
 BOOST_TAR="boost_${BOOST_VER1}_${BOOST_VER2}_${BOOST_VER3}.tar.bz2"
-BOOST_DIR="boost_${BOOST_VER1}_${BOOST_VER2}_${BOOST_VER3}"
 BUILD_DIR="./build/"
 
 # -----------------------
@@ -189,7 +194,7 @@ if [ $CLEAN = yes ] ; then
 	rm -f -r $PROGDIR/$BUILD_DIR
 	
 	echo "Cleaning: $BOOST_DIR"
-	rm -f -r $PROGDIR/$BOOST_DIR
+	rm -f -r $BOOST_DIR
 	
 	echo "Cleaning: $BOOST_TAR"
 	rm -f $PROGDIR/$BOOST_TAR
@@ -200,23 +205,6 @@ if [ $CLEAN = yes ] ; then
 
   [ "$DOWNLOAD" = "yes" ] || exit 0
 fi
-
-# It is almost never desirable to have the boost-X_Y_Z directory from
-# previous builds as this script doesn't check in which state it's
-# been left (bootstrapped, patched, built, ...). Unless maybe during
-# a debug, in which case it's easy for a developer to comment out
-# this code.
-
-if [ -d "$PROGDIR/$BOOST_DIR" ]; then
-	echo "Cleaning: $BOOST_DIR"
-	rm -f -r $PROGDIR/$BOOST_DIR
-fi
-
-if [ -d "$PROGDIR/$BUILD_DIR" ]; then
-	echo "Cleaning: $BUILD_DIR"
-	rm -f -r $PROGDIR/$BUILD_DIR
-fi
-
 
 AndroidNDKRoot=$PARAMETERS
 if [ -z "$AndroidNDKRoot" ] ; then
@@ -385,43 +373,18 @@ then
 	exit 1
 fi
 
-# -----------------------
-# Download required files
-# -----------------------
-
-# Downalod and unzip boost in a temporal folder and
-if [ ! -f $BOOST_TAR ]
+# Do clean
+if [ -f $BOOST_DIR/bjam ]
 then
-	echo "Downloading boost ${BOOST_VER1}.${BOOST_VER2}.${BOOST_VER3} please wait..."
-	prepare_download
-	download_file $BOOST_DOWNLOAD_LINK $PROGDIR/$BOOST_TAR
-fi
-
-if [ ! -f $PROGDIR/$BOOST_TAR ]
-then
-	echo "Failed to download boost! Please download boost ${BOOST_VER1}.${BOOST_VER2}.${BOOST_VER3} manually\nand save it in this directory as $BOOST_TAR"
-	exit 1
-fi
-
-if [ ! -d $PROGDIR/$BOOST_DIR ]
-then
-	echo "Unpacking boost"
-	if [ "$OPTION_PROGRESS" = "yes" ] ; then
-		pv $PROGDIR/$BOOST_TAR | tar xjf - -C $PROGDIR
-	else
-		tar xjf $PROGDIR/$BOOST_TAR
-	fi
-fi
-
-if [ $DOWNLOAD = yes ] ; then
-	echo "All required files has been downloaded and unpacked!"
-	exit 0
+  rm $BOOST_DIR/b2*
+  rm $BOOST_DIR/bjam*
+  rm $BOOST_DIR/bin.v2*
 fi
 
 # ---------
 # Bootstrap
 # ---------
-if [ ! -f ./$BOOST_DIR/bjam ]
+if [ ! -f $BOOST_DIR/bjam ]
 then
   # Make the initial bootstrap
   echo "Performing boost bootstrap"
@@ -481,7 +444,7 @@ then
 
     for PATCH in $PATCHES; do
       PATCH=`echo $PATCH | sed -e s%^\./%%g`
-      SRC_DIR=$PROGDIR/$BOOST_DIR
+      SRC_DIR=$BOOST_DIR
       PATCHDIR=`dirname $PATCH`
       PATCHNAME=`basename $PATCH`
       log "Applying $PATCHNAME into $SRC_DIR/$PATCHDIR"
@@ -580,8 +543,7 @@ echo "Building boost for android for $ARCH"
          $WITHOUT_LIBRARIES           \
          -sICONV_PATH=`pwd`/../libiconv-libicu-android/$ARCH \
          -sICU_PATH=`pwd`/../libiconv-libicu-android/$ARCH \
-         --build-dir="./../$BUILD_DIR/build/$ARCH" \
-         --prefix="./../$BUILD_DIR/out/$ARCH" \
+         --prefix=${PREFIX} \
          $LIBRARIES                   \
          $LIBRARIES_BROKEN            \
          install 2>&1                 \
@@ -592,12 +554,5 @@ echo "Building boost for android for $ARCH"
 )
 
 dump "Done!"
-
-if [ $PREFIX ]; then
-    echo "Prefix set, copying files to $PREFIX"
-    mkdir -p $PREFIX/$ARCH
-    cp -r $PROGDIR/$BUILD_DIR/out/$ARCH/lib $PREFIX/$ARCH/
-    cp -r $PROGDIR/$BUILD_DIR/out/$ARCH/include $PREFIX/$ARCH/
-fi
 
 done # for ARCH in $ARCHLIST
