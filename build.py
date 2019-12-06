@@ -10,7 +10,7 @@ def run(commands):
         sys.stdout.flush()
         os.system(command)
 
-def rebase_path(path, cmp_path=os.getcwd()):
+def rebase_path(path, cmp_path):
   pwd_list = re.split(r"\/|\\", cmp_path)
   path_list = re.split(r"\/|\\", path)
   min_len = min(len(pwd_list), len(path_list))
@@ -32,21 +32,17 @@ def build_for_msys(msys_path, boostdir, arch, prefix, ndkdir):
   if not os.path.exists(msys_path):
     raise Exception("Failed to find Msys")
   else:
-    ndkdir = os.path.abspath(ndkdir)
-    prefix = os.path.abspath(prefix)
     if not os.path.exists(prefix):
       print("Create directory %s"%prefix)
       os.makedirs(prefix)
 
     os.chdir(sys.path[0])
+    current_dir = os.getcwd()
 
-
-    #convert to unix slash format.
-    prefix = prefix.replace('\\', '/')
-    args_array = ["--boost_dir="+rebase_path(boostdir),
+    args_array = ["--boost_dir="+boostdir,
                   "--arch="+arch,
                   "--prefix="+prefix,
-                  rebase_path(ndkdir)]
+                  ndkdir]
 
     msys_shell_cmd = os.path.join(msys_path, "msys2_shell.cmd")
     command = [msys_shell_cmd,
@@ -54,28 +50,20 @@ def build_for_msys(msys_path, boostdir, arch, prefix, ndkdir):
               "-here -c",
               "\"./build-android.bat %s > build_log.txt 2>&1\"" % ' '.join(args_array)]
     run([' '.join(command)])
-    
 
 def build_for_posix(boostdir, arch, prefix, ndkdir):
-  ndkdir = os.path.abspath(ndkdir)
-  prefix = os.path.abspath(prefix)
   if not os.path.exists(prefix):
     print("Create directory %s"%prefix)
     os.makedirs(prefix)
 
   os.chdir(sys.path[0])
-  abs_boost_dir = os.path.abspath(boostdir)
-  args_array = ["--boost_dir="+rebase_path(boostdir),
+  args_array = ["--boost_dir="+boostdir,
                 "--arch="+arch,
                 "--prefix="+prefix,
-                rebase_path(ndkdir)]
+                ndkdir]
 
-  msys_shell_cmd = os.path.join(msys_path, "msys2_shell.cmd")
-  command = [msys_shell_cmd,
-            "-no-start",
-            "-here -c",
-            "\"./build-android.bat %s\""% ' '.join(args_array)]
-  run([' '.join(command)])
+  command = "./build-android.sh %s" % ' '.join(args_array)
+  run([command])
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
