@@ -544,6 +544,7 @@ echo "Building boost for android for $ARCH"
          -sICONV_PATH=`pwd`/../libiconv-libicu-android/$ARCH \
          -sICU_PATH=`pwd`/../libiconv-libicu-android/$ARCH \
          --prefix=${PREFIX} \
+         --hash \
          $LIBRARIES                   \
          $LIBRARIES_BROKEN            \
          install 2>&1                 \
